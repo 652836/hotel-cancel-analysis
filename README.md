@@ -1,11 +1,11 @@
 # 酒店预订取消率归因分析与用户价值提升策略 
 
 ## 项目简介
-  针对酒店预订取消率偏高问题（整体37.04%），通过多维度拆解与用户分层，定位核心影响因素，提出可落地的优化建议。
+  针对酒店预订取消率这个核心指标，通过多维度拆解与用户分层，定位核心影响因素，提出可落地的优化建议。
 
 
 ## 数据说明
-  本数据集包含一家城市酒店和一家度假酒店的预订信息，其中包括预订时间、停留时间、成人、儿童和/或婴儿人数以及可用停车位数量等信息，其中提前预定时长(lead_time)，分销渠道(distribution_channel)等分析指标已加粗显示：
+  本数据集来自 kaggle：https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand/data ，包含一家城市酒店和一家度假酒店的预订信息，其中包括预订时间、停留时间、成人、儿童和/或婴儿人数以及可用停车位数量等信息，其中提前预定时长(lead_time)，分销渠道(distribution_channel)等分析指标已加粗显示：
 
 | 字段    | 说明    |
 |---|---|
@@ -267,6 +267,10 @@ for hotel_type in hotel_types:
 | Undefined | 80.00% | 5 | 0.00% | 4 |
 | GDS | 19.17% | 193 | 0.16% | 37 |
 
+![channel_cancellation](https://github.com/user-attachments/assets/f5a7900c-f674-4cab-b222-da29326e3f5b)
+
+![channel_distribution](https://github.com/user-attachments/assets/a2236d42-ac5e-4ead-9001-515f1f22e014)
+
 ##### 分析结论：
 - **旅行社/旅游运营商 (TA/TO) 渠道**的取消率显著高于其他渠道 (41.03%)，且订单量占比最大 (81.98%)，是取消问题的主要来源。
 - **直接预订 (Direct) 渠道**的取消率最低 (17.46%)，表明直接与酒店预订的客户忠诚度和确定性更高。
@@ -287,6 +291,11 @@ for hotel_type in hotel_types:
 | Undefined | 100.00% | 2 | 0.00% | 2 |
 | Aviation | 21.94% | 237 | 0.20% | 52 |
 
+![segment_cancellation](https://github.com/user-attachments/assets/3f5a440c-2c79-475e-bd8a-37982e78659c)
+
+![segment_cancellation_volume](https://github.com/user-attachments/assets/fe46a041-9fb8-40b3-9304-04380ee632db)
+
+
 ### 分析结论：
 - **团体预订 (Groups) 取消率极高** (61.06%)，虽然订单量占比不是最大 (16.59%)，但取消订单贡献显著。
 - **在线旅行社 (Online TA)** 是最大订单来源 (47.30%)，且取消率较高 (36.72%)，贡献了最多的取消订单。
@@ -303,6 +312,10 @@ for hotel_type in hotel_types:
 | 房型一致 | 41.56% | 104,473 | 87.51% | 43,422 |
 | 房型不一致 | 5.38% | 14,917 | 12.49% | 802 |
 
+![room_change_cancellation](https://github.com/user-attachments/assets/276066e8-3a43-40d9-990f-28f8593e5e62)
+
+
+
 #### 分析结论：
 - 奇怪的是，**房型一致的订单取消率显著高于房型不一致的订单 (41.56% vs 5.38%)**。
 - 这与直觉相反，可能表明房型不一致的情况通常发生在客人已经入住后的调整，而此时取消可能性已经很低。
@@ -317,6 +330,9 @@ for hotel_type in hotel_types:
 | No Deposit | 28.38% | 104,641 | 87.65% | 29,694 |
 | Refundable | 22.22% | 162 | 0.14% | 36 |
 | Non Refund | 99.36% | 14,587 | 12.22% | 14,494 |
+
+![deposit_cancellation](https://github.com/user-attachments/assets/28dee09f-5a94-42f3-90ea-4f758eae0227)
+
 
 #### 分析结论：
 - **不可退款 (Non Refund) 类型的押金有近乎 100% 的取消率 (99.36%)**，这与直觉不符。
