@@ -3,7 +3,6 @@
 ## 项目简介
   针对酒店预订取消率这个核心指标，通过多维度拆解与用户分层，定位核心影响因素，提出可落地的优化建议。
 
-
 ## 数据说明
   本数据集来自 kaggle：https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand/data ，包含一家城市酒店和一家度假酒店的预订信息，其中包括预订时间、停留时间、成人、儿童和/或婴儿人数以及可用停车位数量等信息，其中提前预定时长(lead_time)，分销渠道(distribution_channel)等分析指标已加粗显示：
 
@@ -394,3 +393,7 @@ for hotel_type in hotel_types:
   - 搭建Tableau动态看板，实时监控关键指标：
     - 在Tableau看板中新增**“决策树特征重要性”监控模块**，实时跟踪押金类型、特殊需求等核心因子波动。
     - 建立渠道风险指数（基于模型权重计算），对高风险渠道进行红黄牌预警。
+
+
+## 附录
+本次分析所有python代码均在文件hotel-booking-analysis.ipynb 中给出，数据集为kaggle数据集，我也上传到了GitHub，可以下载文件 hotel_bookings.csv（文件来源：https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand/data）
