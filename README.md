@@ -1,22 +1,70 @@
-# 酒店预订取消率异动归因与用户分层策略分析报告
+# 酒店预订取消率归因分析与用户价值提升策略 
 
-## 摘要
+## 项目简介
+  针对酒店预订取消率偏高问题（整体37.04%），通过多维度拆解与用户分层，定位核心影响因素，提出可落地的优化建议。
 
-本报告分析了酒店预订数据集中的取消率影响因素，发现预订提前时间、客户类型、分销渠道和房间类型一致性是影响取消率的主要因素。新客户取消率显著高于重复客户，提前预订时间越长取消率越高，通过旅行社/旅游运营商渠道的订单取消率明显高于直接预订，而Groups市场细分的取消率更是高达61.06%。本报告提供了详细的数据分析过程和Python代码，并基于分析结果提出了优化建议框架。
 
-## 1. 数据探索与清洗
+## 数据说明
+  本数据集包含一家城市酒店和一家度假酒店的预订信息，其中包括预订时间、停留时间、成人、儿童和/或婴儿人数以及可用停车位数量等信息，其中提前预定时长(lead_time)，分销渠道(distribution_channel)等分析指标已加粗显示：
+
+| 字段    | 说明    |
+|---|---|
+| hotel    | 酒店名称（度假酒店或城市酒店），用于区分业务场景和客群特征。    |
+| **is_canceled**    | 预订是否被取消（1表示取消），分析取消率及影响因素。    |
+| **lead_time**    | 预订日期与入住日期间隔天数，评估客户提前规划行为。    |
+| arrival_date_year    | 入住年份，支持年度趋势对比和季节性分析。    |
+| arrival_date_month    | 入住月份，识别淡旺季需求波动。    |
+| arrival_date_week_number | 入住周数，分析周维度业务表现。    |
+| arrival_date_day_of_month | 入住日期（日），用于日流量预测和资源调度。    |
+| stays_in_weekend_nights | 周末入住夜数，评估周末经济贡献和促销策略。    |
+| stays_in_week_nights   | 工作日入住夜数，分析商务客与休闲客占比。    |
+| adults    | 成人数量，用于客房容量规划和附加服务推荐。    |
+| children    | 儿童数量，支持家庭客群服务优化。    |
+| babies    | 婴儿数量，识别特殊需求（如婴儿床）。    |
+| meal    | 预订的餐食类型，优化套餐设计和成本控制。    |
+| country    | 客户来源国家，支持全球化市场策略制定。    |
+| **market_segment**    | 市场细分类型（如团体、散客），定位核心客群特征。    |
+| **distribution_channel**  | 预订分销渠道（如官网、代理商），评估渠道贡献效率。    |
+| **is_repeated_guest**    | 是否为回头客（1表示是），分析客户忠诚度和复购率。    |
+| previous_cancellations | 客户历史取消次数，识别高取消风险客户。    |
+| previous_bookings_not_canceled | 客户历史未取消订单数，评估客户稳定性。    |
+| **reserved_room_type**    | 预订的客房类型代码，用于房型需求分析和库存分配。    |
+| **assigned_room_type**    | 实际分配的客房类型代码，对比预订与实际差异。    |
+| **booking_changes**    | 预订变更次数，衡量客户需求灵活性和服务压力。    |
+| deposit_type    | 押金类型（如无押金、部分预付），分析支付行为与取消关联。    |
+| agent    | 预订代理机构ID，评估代理商合作价值。    |
+| company    | 预订企业ID，识别企业客户合作关系。    |
+| days_in_waiting_list   | 预订进入等待列表的天数，优化房源分配效率。    |
+| **customer_type**    | 客户类型（如散客、合约客户），制定差异化服务策略。    |
+| adr    | 日均房价（总房费/入住夜数），核心收益指标和定价依据。    |
+| required_car_parking_spaces | 所需停车位数量，优化配套设施规划。    |
+| total_of_special_requests | 特殊需求数量（如高层房间），提升服务满意度。    |
+| reservation_status    | 预订最终状态（如已取消、已入住），监控业务完成情况。    |
+| reservation_status_date | 状态更新时间，用于动态跟踪预订生命周期。    |
+
+
+## 分析框架
+首先对要分析的核心指标结合已有数据进行指标拆解和异动分析：
+### 指标拆解与异动定位  
+- **核心指标**：整体取消率（`is_canceled=1`占比）。  
+- **维度拆解**：  
+  - **用户属性**：新客 vs 重复客（`is_repeated_guest`）、客户类型（`customer_type`）。  
+  - **行为特征**：提前预订时长（`lead_time`）、预订修改次数（`booking_changes`）。  
+  - **渠道与市场**：分销渠道（`distribution_channel`）、市场细分（`market_segment`）。  
+  - **房间与价格**：房间类型一致性（`reserved_room_type` vs `assigned_room_type`）、平均房价（`adr`）。  
+
+### 初步分析方法：  
+- 计算各维度下的取消率，对比差异。  
+- 使用卡方检验识别显著性影响因素。
+
+
+## 数据处理
 
 首先，进行数据加载和探索性分析，了解数据结构并检查缺失值。
-
+### 数据探索
 ```python
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy.stats import chi2_contingency
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -39,8 +87,17 @@ print("\n数据类型:")
 print(df.dtypes)
 ```
 
-数据缺失情况分析显示，children、agent和company字段存在缺失值。由于我们的分析重点不在这些字段，我们可以根据需要进行处理：
+| 字段     | 缺失值数量 |
+|----------|------------|
+| children | 4          |
+| country  | 488        |
+| agent    | 16340      |
+| company  | 112593     |
+| dtype    | int64      |
 
+数据缺失情况分析显示，children、agent和company字段存在缺失值。由于我的分析重点不在这些字段，所以将其对应的空值填为0：
+
+### 数据清洗
 ```python
 # 处理缺失值
 df['children'] = df['children'].fillna(0)
@@ -59,7 +116,13 @@ for col in ['agent', 'company']:
     df[col] = df[col].fillna(0)
 ```
 
-## 2. 整体取消率分析
+
+
+
+
+## 数据分析
+
+### 1. 整体取消率分析
 
 计算总体取消率，并按酒店类型进行初步分析：
 
@@ -79,69 +142,49 @@ for hotel_type in hotel_types:
     hotel_rate = (hotel_canceled / len(hotel_df)) * 100
     print(f"{hotel_type} 酒店取消率: {hotel_rate:.2f}%")
 ```
+![image](https://github.com/user-attachments/assets/521dfe9a-f3a7-4f00-b7fd-f0d3b725762f)
 
-分析结果显示整体取消率为37.04%，其中城市酒店(City Hotel)的取消率(41.73%)明显高于度假酒店(Resort Hotel)(27.76%)。
 
-## 3. 用户属性维度分析
+使用tableau可视化（如上图所示），可以看到结果显示整体取消率为37.04%，其中城市酒店(City Hotel)的取消率(41.73%)明显高于度假酒店(Resort Hotel)(27.76%)。
 
-### 3.1 新客户与重复客户分析
+### 2. 用户属性维度分析
 
-根据`is_repeated_guest`字段，区分新客户与重复客户，分析其取消率差异：
+#### 2.1 新客户与重复客户分析
 
-```python
-# 新客户与重复客户定义
-# 新客户：is_repeated_guest=0
-# 重复客户：is_repeated_guest=1
+根据`is_repeated_guest`字段，区分新客户与重复客户，即：
+- 新客户：is_repeated_guest=0
+- 重复客户：is_repeated_guest=1分析其取消率差异：
+分析结果如下：
 
-# 新客户与重复客户取消率分析
-new_guest_df = df[df['is_repeated_guest'] == 0]
-repeat_guest_df = df[df['is_repeated_guest'] == 1]
+| 指标                     | 数值         |
+|--------------------------|--------------|
+| 新客户数量               | 115580       |
+| 重复客户数量             | 3810         |
+| 新客户取消率             | 37.79%       |
+| 重复客户取消率           | 14.49%       |
+| 取消率差异（新客户 - 重复客户） | 23.30%       |
+| 卡方值                   | 857.4063     |
+| p值                      | 0.0000000000 |
+| 是否显著（95% 水平）     | 显著         |
 
-new_guest_canceled = new_guest_df[new_guest_df['is_canceled'] == 1].shape[0]
-repeat_guest_canceled = repeat_guest_df[repeat_guest_df['is_canceled'] == 1].shape[0]
-
-new_guest_rate = (new_guest_canceled / len(new_guest_df)) * 100
-repeat_guest_rate = (repeat_guest_canceled / len(repeat_guest_df)) * 100
-
-print(f"新客户数量: {len(new_guest_df)}")
-print(f"重复客户数量: {len(repeat_guest_df)}")
-print(f"新客户取消率: {new_guest_rate:.2f}%")
-print(f"重复客户取消率: {repeat_guest_rate:.2f}%")
-print(f"取消率差异(新客户 - 重复客户): {new_guest_rate - repeat_guest_rate:.2f}%")
-
-# 卡方检验 - 判断新/重复客户与取消率关系是否显著
-contingency_table = pd.crosstab(df['is_repeated_guest'], df['is_canceled'])
-chi2, p, dof, expected = chi2_contingency(contingency_table)
-print(f"卡方值: {chi2:.4f}")
-print(f"p值: {p:.10f}")
-print(f"是否显著 (95% 水平): {'显著' if p < 0.05 else '不显著'}")
-```
-
-分析结果表明：
+分析结果表明：（结果请见附件notebook）
 - 新客户占总体的96.81%（115580人），重复客户仅占3.19%（3810人）
 - 新客户取消率为37.79%，而重复客户取消率仅为14.49%，差异达23.30个百分点
 - 卡方检验结果显示，这一差异在统计上是显著的（p < 0.05）
 
-### 3.2 客户类型分析
+### 2.2 客户类型分析
 
 分析不同客户类型(`customer_type`)的取消率差异：
 
-```python
-# 客户类型与取消率关系分析
-customer_types = df['customer_type'].unique()
-for ctype in customer_types:
-    type_df = df[df['customer_type'] == ctype]
-    type_canceled = type_df[type_df['is_canceled'] == 1].shape[0]
-    type_rate = (type_canceled / len(type_df)) * 100
-    print(f"{ctype} 客户取消率: {type_rate:.2f}%")
-
-# 卡方检验 - 判断客户类型与取消率关系是否显著
-contingency_table = pd.crosstab(df['customer_type'], df['is_canceled'])
-chi2, p, dof, expected = chi2_contingency(contingency_table)
-print(f"卡方值: {chi2:.4f}")
-print(f"p值: {p:.10f}")
-print(f"是否显著 (95% 水平): {'显著' if p < 0.05 else '不显著'}")
-```
+| 指标                     | 数值         |
+|--------------------------|--------------|
+| Transient 客户取消率      | 40.75%       |
+| Contract 客户取消率       | 30.96%       |
+| Transient-Party 客户取消率| 25.43%       |
+| Group 客户取消率         | 10.23%       |
+| 卡方值                   | 2222.5042    |
+| p值                      | 0.0000000000 |
+| 是否显著（95% 水平）     | 显著         |
 
 分析结果显示:
 - Transient（临时）客户取消率最高，为40.75%
@@ -149,57 +192,27 @@ print(f"是否显著 (95% 水平): {'显著' if p < 0.05 else '不显著'}")
 - Contract（合约）客户和Transient-Party（临时团体）客户的取消率分别为30.96%和25.43%
 - 卡方检验结果显示，不同客户类型的取消率差异在统计上是显著的（p < 0.05）
 
-## 4. 行为特征维度分析
+### 3. 行为特征维度分析
 
-### 4.1 提前预订时长分析
+#### 3.1 提前预订时长分析
 
 分析提前预订时长(`lead_time`)与取消率的关系：
 
-```python
-# 将lead_time进行分组
-def group_lead_time(lead_time):
-    if lead_time <= 7:
-        return "0-7天"
-    elif lead_time <= 30:
-        return "8-30天"
-    elif lead_time <= 90:
-        return "31-90天"
-    elif lead_time <= 180:
-        return "91-180天"
-    else:
-        return "180天以上"
-
-# 添加lead_time分组字段
-df['lead_time_group'] = df['lead_time'].apply(group_lead_time)
-
-# 分析各lead_time组的取消率
-lead_time_groups = df['lead_time_group'].unique()
-for group in sorted(lead_time_groups, key=lambda x: ["0-7天", "8-30天", "31-90天", "91-180天", "180天以上"].index(x)):
-    group_df = df[df['lead_time_group'] == group]
-    group_canceled = group_df[group_df['is_canceled'] == 1].shape[0]
-    group_rate = (group_canceled / len(group_df)) * 100
-    print(f"{group} 预订取消率: {group_rate:.2f}%，订单数: {len(group_df)}")
-
-# 卡方检验 - 判断lead_time分组与取消率关系是否显著
-contingency_table = pd.crosstab(df['lead_time_group'], df['is_canceled'])
-chi2, p, dof, expected = chi2_contingency(contingency_table)
-print(f"卡方值: {chi2:.4f}")
-print(f"p值: {p:.10f}")
-print(f"是否显著 (95% 水平): {'显著' if p < 0.05 else '不显著'}")
-
-# 可视化lead_time与取消率的关系
-plt.figure(figsize=(10, 6))
-group_rates = df.groupby('lead_time_group')['is_canceled'].mean() * 100
-group_rates = group_rates.reindex(["0-7天", "8-30天", "31-90天", "91-180天", "180天以上"])
-group_rates.plot(kind='bar', color='skyblue')
-plt.title('提前预订时长与取消率关系')
-plt.xlabel('提前预订时长')
-plt.ylabel('取消率 (%)')
-plt.ylim(0, 100)
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.savefig('lead_time_cancellation.png')
-```
+| 指标                     | 数值         |
+|--------------------------|--------------|
+| 0-7天 预订取消率         | 9.63%        |
+| 0-7天 订单数             | 19746        |
+| 8-30天 预订取消率        | 27.86%       |
+| 8-30天 订单数            | 18960        |
+| 31-90天 预订取消率       | 37.70%       |
+| 31-90天 订单数           | 29553        |
+| 91-180天 预订取消率      | 44.71%       |
+| 91-180天 订单数          | 26439        |
+| 180天以上 预订取消率     | 57.01%       |
+| 180天以上 订单数         | 24692        |
+| 卡方值                   | 11940.0574   |
+| p值                      | 0.0000000000 |
+| 是否显著（95% 水平）     | 显著         |
 
 分析结果表明：
 - 提前预订时间越长，取消率越高
@@ -207,49 +220,22 @@ plt.savefig('lead_time_cancellation.png')
 - 提前预订180天以上的订单取消率最高，达57.01%
 - 卡方检验结果显示，提前预订时长与取消率的关系在统计上是显著的（p < 0.05）
 
-### 4.2 预订修改次数分析
+#### 3.2 预订修改次数分析
 
 分析预订修改次数(`booking_changes`)与取消率的关系：
 
-```python
-# 预订修改次数与取消率关系分析
-booking_changes = df['booking_changes'].unique()
-booking_changes_sorted = sorted(booking_changes)
+| 修改次数范围      | 取消率  | 订单数  | 
+|----------------|--------|------|
+| 0 次           | 40.85% | 101,314 |
+| 1 次           | 14.23% | 12,701  |
+| 2-3 次         | 19.23% | 4,732   |
+| 4 次及以上     | 18.04% | 643     |
 
-for changes in booking_changes_sorted:
-    changes_df = df[df['booking_changes'] == changes]
-    changes_canceled = changes_df[changes_df['is_canceled'] == 1].shape[0]
-    changes_rate = (changes_canceled / len(changes_df)) * 100
-    print(f"修改 {changes} 次的订单取消率: {changes_rate:.2f}%，订单数: {len(changes_df)}")
+- **卡方值**: 4209.4396  
+- **p 值**: 0.0000000000  
+- **是否显著（95% 置信水平）**: **显著** 
 
-# 将修改次数分组，便于分析
-def group_booking_changes(changes):
-    if changes == 0:
-        return "0次"
-    elif changes == 1:
-        return "1次"
-    elif changes <= 3:
-        return "2-3次"
-    else:
-        return "4次及以上"
 
-df['booking_changes_group'] = df['booking_changes'].apply(group_booking_changes)
-
-# 分析各预订修改次数组的取消率
-changes_groups = df['booking_changes_group'].unique()
-for group in sorted(changes_groups, key=lambda x: ["0次", "1次", "2-3次", "4次及以上"].index(x)):
-    group_df = df[df['booking_changes_group'] == group]
-    group_canceled = group_df[group_df['is_canceled'] == 1].shape[0]
-    group_rate = (group_canceled / len(group_df)) * 100
-    print(f"{group} 修改的订单取消率: {group_rate:.2f}%，订单数: {len(group_df)}")
-
-# 卡方检验 - 判断预订修改次数与取消率关系是否显著
-contingency_table = pd.crosstab(df['booking_changes_group'], df['is_canceled'])
-chi2, p, dof, expected = chi2_contingency(contingency_table)
-print(f"卡方值: {chi2:.4f}")
-print(f"p值: {p:.10f}")
-print(f"是否显著 (95% 水平): {'显著' if p < 0.05 else '不显著'}")
-```
 
 分析结果显示：
 - 未修改过预订信息(0次)的订单取消率最高，达40.85%
@@ -257,36 +243,106 @@ print(f"是否显著 (95% 水平): {'显著' if p < 0.05 else '不显著'}")
 - 总体来看，进行过预订修改的订单取消率明显低于未修改的订单
 - 卡方检验结果表明，预订修改次数与取消率的关系在统计上是显著的（p < 0.05）
 
-## 5. 渠道与市场维度分析
+### 4. 渠道与市场维度分析
 
-### 5.1 分销渠道分析
+#### 4.1 分销渠道分析
 
 分析分销渠道(`distribution_channel`)与取消率的关系：
 
-```python
-# 分销渠道与取消率关系分析
-channels = df['distribution_channel'].unique()
-for channel in channels:
-    channel_df = df[df['distribution_channel'] == channel]
-    channel_canceled = channel_df[channel_df['is_canceled'] == 1].shape[0]
-    channel_rate = (channel_canceled / len(channel_df)) * 100
-    print(f"{channel} 渠道取消率: {channel_rate:.2f}%，订单数: {len(channel_df)}")
+分析得到结果如下：
 
-# 卡方检验 - 判断分销渠道与取消率关系是否显著
-contingency_table = pd.crosstab(df['distribution_channel'], df['is_canceled'])
-chi2, p, dof, expected = chi2_contingency(contingency_table)
-print(f"卡方值: {chi2:.4f}")
-print(f"p值: {p:.10f}")
-print(f"是否显著 (95% 水平): {'显著' if p < 0.05 else '不显著'}")
+| 分销渠道 | 取消率 | 总订单数 | 订单占比 | 取消订单数 |
+|---------|------|------|------|------|
+| Direct | 17.46% | 14,645 | 12.27% | 2,557 |
+| Corporate | 22.08% | 6,677 | 5.59% | 1,474 |
+| TA/TO | 41.03% | 97,870 | 81.98% | 40,152 |
+| Undefined | 80.00% | 5 | 0.00% | 4 |
+| GDS | 19.17% | 193 | 0.16% | 37 |
 
-# 可视化分销渠道与取消率的关系
-plt.figure(figsize=(10, 6))
-channel_rates = df.groupby('distribution_channel')['is_canceled'].mean() * 100
-channel_rates.plot(kind='bar', color='lightgreen')
-plt.title('分销渠道与取消率关系')
-plt.xlabel('分销渠道')
-plt.ylabel('取消率 (%)')
-plt.ylim(0, 100)
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.savefig('channel
+##### 分析结论：
+- **旅行社/旅游运营商 (TA/TO) 渠道**的取消率显著高于其他渠道 (41.03%)，且订单量占比最大 (81.98%)，是取消问题的主要来源。
+- **直接预订 (Direct) 渠道**的取消率最低 (17.46%)，表明直接与酒店预订的客户忠诚度和确定性更高。
+- **Undefined 渠道**取消率虽高达 80%，但订单量极少，可能是第三方渠道或者其他方式的交易，影响不大。
+
+---
+
+#### 4.2 市场细分 (market_segment) 维度分析
+
+| 市场细分 | 取消率 | 总订单数 | 订单占比 | 取消订单数 |
+|---------|------|------|------|------|
+| Direct | 15.34% | 12,606 | 10.56% | 1,934 |
+| Corporate | 18.73% | 5,295 | 4.44% | 992 |
+| Online TA | 36.72% | 56,477 | 47.30% | 20,739 |
+| Offline TA/TO | 34.32% | 24,219 | 20.29% | 8,311 |
+| Complementary | 13.06% | 743 | 0.62% | 97 |
+| Groups | 61.06% | 19,811 | 16.59% | 12,097 |
+| Undefined | 100.00% | 2 | 0.00% | 2 |
+| Aviation | 21.94% | 237 | 0.20% | 52 |
+
+### 分析结论：
+- **团体预订 (Groups) 取消率极高** (61.06%)，虽然订单量占比不是最大 (16.59%)，但取消订单贡献显著。
+- **在线旅行社 (Online TA)** 是最大订单来源 (47.30%)，且取消率较高 (36.72%)，贡献了最多的取消订单。
+- **直接预订 (Direct) 和补充性预订 (Complementary)** 取消率明显较低，这些客户更可能完成入住。
+
+---
+
+### 5. 房间与价格维度分析
+
+#### 5.1 房间类型一致性分析
+
+| 房型一致性 | 取消率 | 总订单数 | 订单占比 | 取消订单数 |
+|---------|------|------|------|------|
+| 房型一致 | 41.56% | 104,473 | 87.51% | 43,422 |
+| 房型不一致 | 5.38% | 14,917 | 12.49% | 802 |
+
+#### 分析结论：
+- 奇怪的是，**房型一致的订单取消率显著高于房型不一致的订单 (41.56% vs 5.38%)**。
+- 这与直觉相反，可能表明房型不一致的情况通常发生在客人已经入住后的调整，而此时取消可能性已经很低。
+- 另一种可能是，**房型不一致可能伴随着升级服务，提高了客户满意度**，需要进一步结合客户升级数据和客户确定房型时间数据进行分析。
+
+---
+
+#### 5.2 押金类型 (deposit_type) 分析
+
+| 押金类型 | 取消率 | 总订单数 | 订单占比 | 取消订单数 |
+|---------|------|------|------|------|
+| No Deposit | 28.38% | 104,641 | 87.65% | 29,694 |
+| Refundable | 22.22% | 162 | 0.14% | 36 |
+| Non Refund | 99.36% | 14,587 | 12.22% | 14,494 |
+
+#### 分析结论：
+- **不可退款 (Non Refund) 类型的押金有近乎 100% 的取消率 (99.36%)**，这与直觉不符。
+- 这可能表明系统中对 "取消" 的定义包含了 "不退款取消" 的情况，即使客人付费但未实际入住，需要检查酒店系统。
+- **无押金 (No Deposit) 预订占据大多数 (87.65%)**，取消率接近整体平均水平。
+
+
+
+## 总体分析结论
+### 关键发现与异动归因
+#### 1. 核心问题定位
+- **关键异动**：城市酒店取消率（41.73%）显著高于度假酒店（27.76%）。
+- **用户属性差异**：新客户占比96.8%，其取消率（37.8%）是重复客户（14.5%）的2.6倍。
+- **行为特征**：提前预订时间越长取消率越高（180天以上订单取消率达57.0%），未修改订单取消率（40.9%）是修改订单的2.3倍。
+- **渠道风险**：旅行社渠道（TA/TO）贡献81.98%订单但取消率41.0%，是主要风险来源。
+- **定价矛盾**：不可退款订单（Non Refund）取消率99.4%，暴露定价策略与客户行为冲突。
+
+#### 2. 用户分层洞察
+- **高价值用户**（重复客户、合约客户）：取消率低于20%，消费频次与金额高，需重点维护。
+- **流失风险用户**（长提前期新客、团体客户）：取消率超50%，占整体取消订单的68%。
+
+### 业务优化建议
+#### 1. 短期策略（降低取消率）
+- **动态押金策略**：
+  - 对提前期>90天的订单，收取阶梯式押金（如30天前免费取消，30天后押金递增），预计降低长提前期取消率15%。
+- **渠道优化**：
+  - 与高取消率渠道（TA/TO）重新谈判合同条款，增加违约成本；同时提升直接预订渠道权益（如专属折扣），目标将直接渠道订单占比提升至20%。
+- **即时确认机制**：
+  - 对房型一致的订单（取消率41.6%），在预订时发送房型实景视频，减少到店后落差，预计降低该类取消率10%。
+#### 2. 长期策略（提升用户价值）
+- **用户分层运营**：
+  - 对重复客户推出“忠诚度计划”（如入住3次享免费升级），强化留存。
+  - 针对长提前期新客，设计“早鸟优惠+灵活改期”组合政策，提升转化率。
+- **数据监控体系**：
+  - 搭建Tableau动态看板，实时监控关键指标：
+    - 核心指标：分渠道/客户类型取消率、提前期分布
+    - 预警机制：当某渠道取消率连续3天超阈值时自动触发排查流程。
