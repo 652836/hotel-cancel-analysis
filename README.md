@@ -396,4 +396,4 @@ for hotel_type in hotel_types:
 
 
 ## 附录
-本次分析所有python代码均在文件hotel-booking-analysis.ipynb 中给出，数据集为kaggle数据集，我也上传到了GitHub，可以下载文件 hotel_bookings.csv（文件来源：https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand/data）
+本次分析所有python代码均在文件hotel-booking-analysis.ipynb 中给出，数据集为kaggle数据集，已上传到GitHub，可以下载文件 hotel_bookings.csv（文件来源：https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand/data）
